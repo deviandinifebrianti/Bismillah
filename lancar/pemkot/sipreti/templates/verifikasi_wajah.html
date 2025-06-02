@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verifikasi Wajah</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .daftar-kompresi {
+            flex: 1;
+            min-width: 300px;
+            border-right: 1px solid #ddd;
+            padding-right: 20px;
+        }
+        .detail-kompresi {
+            flex: 2;
+            min-width: 400px;
+            padding-left: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .selected {
+            background-color: #e0e0e0 !important;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .gambar-besar {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+        }
+        .riwayat-verifikasi {
+            margin-top: 20px;
+        }
+        .sukses {
+            color: green;
+            font-weight: bold;
+        }
+        .gagal {
+            color: red;
+            font-weight: bold;
+        }
+        .thumb {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <h1>Halaman Verifikasi Wajah</h1>
+    
+    <div class="container">
+        <div class="daftar-kompresi">
+            <h2>Daftar Data Kompresi</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>ID Pegawai</th>
+                        <th>Gambar</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for kompresi in kompresi_data %}
+                        <tr {% if kompresi_terpilih and kompresi.id == kompresi_terpilih.id %}class="selected"{% endif %}>
+                            <td>{{ kompresi.id }}</td>
+                            <td>{{ kompresi.id_pegawai }}</td>
+                            <td>
+                                <img src="{% url 'tampilkan_hasil_dekompresi' kompresi.id %}" class="thumb" alt="Wajah">
+                            </td>
+                            <td>
+                                <a href="{% url 'halaman_verifikasi_dengan_id' kompresi.id %}" class="btn">Pilih</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4">Tidak ada data kompresi yang tersedia</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if kompresi_terpilih %}
+        <div class="detail-kompresi">
+            <h2>Detail Kompresi #{{ kompresi_terpilih.id }}</h2>
+            
+            <div>
+                <h3>Data Kompresi</h3>
+                <p><strong>ID Pegawai:</strong> {{ kompresi_terpilih.id_pegawai }}</p>
+                <p><strong>Resolusi:</strong> {{ kompresi_terpilih.width }} x {{ kompresi_terpilih.height }} pixel</p>
+                <p><strong>Ukuran Original:</strong> {{ kompresi_terpilih.original_size }} bytes</p>
+                <p><strong>Ukuran Terkompresi:</strong> {{ kompresi_terpilih.compressed_size }} bytes</p>
+                <p><strong>Rasio Kompresi:</strong> {{ kompresi_terpilih.compression_ratio|floatformat:2 }}x</p>
+                <p><strong>Tanggal Dibuat:</strong> {{ kompresi_terpilih.created_at }}</p>
+            </div>
+            
+            <div>
+                <h3>Gambar Hasil Dekompresi</h3>
+                <img src="{% url 'tampilkan_hasil_dekompresi' kompresi_terpilih.id %}" class="gambar-besar" alt="Wajah Terdekompresi">
+            </div>
+            
+            <div>
+                <h3>Verifikasi Wajah</h3>
+                <form method="post" action="{% url 'verifikasi_dari_kompresi' kompresi_terpilih.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Verifikasi Wajah</button>
+                </form>
+            </div>
+            
+            <div class="riwayat-verifikasi">
+                <h3>Riwayat Verifikasi</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Status</th>
+                            <th>Nilai Kecocokan</th>
+                            <th>Waktu Dekompresi</th>
+                            <th>Waktu Verifikasi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in kompresi_terpilih.logverifikasi_set.all|dictsortreversed:"created_at" %}
+                        <tr>
+                            <td>{{ log.created_at }}</td>
+                            <td>
+                                {% if log.status_verifikasi %}
+                                <span class="sukses">✅ Terverifikasi</span>
+                                {% else %}
+                                <span class="gagal">❌ Tidak Terverifikasi</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.nilai_kecocokan|floatformat:2 }}</td>
+                            <td>{{ log.waktu_dekompresi_ms }} ms</td>
+                            <td>{{ log.waktu_verifikasi_ms }} ms</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Belum ada riwayat verifikasi</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="detail-kompresi">
+            <h2>Silakan pilih data kompresi dari daftar di sebelah kiri</h2>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
