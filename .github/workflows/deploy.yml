@@ -1,0 +1,106 @@
+name: Deploy Django ML App to CentOS
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run Django tests
+      run: |
+        python manage.py test
+      env:
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        DEBUG: False
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to CentOS Server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        script: |
+          # Navigate to project directory
+          cd /home/${{ secrets.USERNAME }}/myproject
+          
+          # Backup current version
+          echo "Creating backup..."
+          mkdir -p backups
+          cp -r . backups/backup-$(date +%Y%m%d-%H%M%S) || echo "Backup failed, continuing..."
+          
+          # Pull latest changes
+          echo "Pulling latest changes..."
+          git pull origin main
+          
+          # Activate virtual environment
+          source venv/bin/activate
+          
+          # Install/update requirements
+          echo "Installing requirements..."
+          pip install -r requirements.txt
+          
+          # Run Django management commands
+          echo "Running Django migrations..."
+          python manage.py migrate --noinput
+          
+          echo "Collecting static files..."
+          python manage.py collectstatic --noinput
+          
+          # Restart services
+          echo "Restarting services..."
+          sudo systemctl restart myproject
+          sudo systemctl restart nginx
+          
+          # Verify deployment
+          echo "Checking service status..."
+          sudo systemctl is-active myproject
+          
+          echo "Deployment completed successfully!"
+
+  notify:
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "✅ Deployment successful!"
+        else
+          echo "❌ Deployment failed!"
+        fi
