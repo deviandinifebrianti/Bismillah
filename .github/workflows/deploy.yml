@@ -1,4 +1,4 @@
-name: Deploy Django App (PEMKOTMALANG-SIPRETI) to Ubuntu 20.04.6
+name: Deploy Django App (PEMKOTMALANG-SIPRETI) to Ubuntu 22.04
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04  # ✅ Ganti OS runner
 
     services:
       mariadb:
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.7
+      - name: Set up Python 3.7.8 on Ubuntu 22.04
         uses: actions/setup-python@v5
         with:
           python-version: '3.7.8'
@@ -37,9 +37,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ubuntu20-pip-${{ hashFiles('**/requirements.txt') }}
+          key: ubuntu22-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ubuntu20-pip-
+            ubuntu22-pip-
 
       - name: Install Python dependencies
         run: |
@@ -65,7 +65,7 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04  # ✅ Ganti OS runner
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -106,7 +106,7 @@ jobs:
             echo "Restarting Apache..."
             sudo systemctl restart apache2
 
-            echo "Deployment complete on Ubuntu 20.04.6"
+            echo "✅ Deployment complete on Ubuntu 22.04"
 
   notify:
     needs: [test, deploy]
@@ -117,7 +117,7 @@ jobs:
       - name: Notify Deployment Status
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment successful to Ubuntu 20.04.6"
+            echo "✅ Deployment successful to Ubuntu 22.04"
           else
             echo "❌ Deployment failed! Check logs"
           fi
