@@ -1,4 +1,4 @@
-name: Deploy Django ML App to CentOS
+name: Deploy Django ML App (PEMKOT-SIPRETI) to CentOS
 
 on:
   push:
@@ -13,10 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.8
+    - name: Set up Python 3.7.8
       uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: 3.7.8  # Sesuai dengan lokal
     
     - name: Cache pip dependencies
       uses: actions/cache@v3
@@ -31,12 +31,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
+    # Setup database untuk testing (sesuai konfigurasi lokal)
+    - name: Set up MySQL
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        host port: 3306
+        container port: 3306
+        character set server: 'utf8'
+        collation server: 'utf8_general_ci'
+        mysql version: '8.0'
+        mysql database: 'db_sipreti'  # Sesuai dengan lokal
+        mysql root password: ''        # Password kosong seperti lokal
+    
     - name: Run Django tests
       run: |
+        # Setup database untuk testing
+        python manage.py migrate --settings=pemkot.settings_test
+        # Jalankan tests
         python manage.py test
       env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
         DEBUG: False
+        DATABASE_URL: mysql://root:@127.0.0.1:3306/db_sipreti
 
   deploy:
     needs: test
@@ -54,8 +69,8 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: ${{ secrets.PORT }}
         script: |
-          # Navigate to project directory
-          cd /home/${{ secrets.USERNAME }}/myproject
+          # Navigate to project directory (VM sipreti)
+          cd /home/${{ secrets.USERNAME }}/sipreti
           
           # Backup current version
           echo "Creating backup..."
@@ -67,7 +82,7 @@ jobs:
           git pull origin main
           
           # Activate virtual environment
-          source venv/bin/activate
+          source .venv/bin/activate
           
           # Install/update requirements
           echo "Installing requirements..."
@@ -80,16 +95,16 @@ jobs:
           echo "Collecting static files..."
           python manage.py collectstatic --noinput
           
-          # Restart services
+          # Restart services (untuk VM sipreti)
           echo "Restarting services..."
-          sudo systemctl restart myproject
+          sudo systemctl restart sipreti
           sudo systemctl restart nginx
           
           # Verify deployment
           echo "Checking service status..."
-          sudo systemctl is-active myproject
+          sudo systemctl is-active sipreti
           
-          echo "Deployment completed successfully!"
+          echo "Deployment sipreti completed successfully!"
 
   notify:
     needs: [test, deploy]
@@ -101,6 +116,10 @@ jobs:
       run: |
         if [ "${{ needs.deploy.result }}" == "success" ]; then
           echo "✅ Deployment successful!"
+          echo "🚀 PEMKOT-SIPRETI Django ML App deployed with Python 3.7.8"
+          echo "📦 Packages: Django 4.2.20, TensorFlow 2.13.0, OpenCV 4.11.0, PyMySQL"
+          echo "🏛️ Project: pemkot | App: sipreti | DB: db_sipreti"
         else
           echo "❌ Deployment failed!"
+          echo "Please check the logs for details"
         fi

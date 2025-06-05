@@ -6,6 +6,8 @@ cachetools==5.5.2
 certifi==2025.4.26
 charset-normalizer==3.4.2
 Django==4.2.20
+django-cors-headers==4.3.1  # ← TAMBAH INI (untuk corsheaders)
+djangorestframework==3.14.0  # ← TAMBAH INI (untuk rest_framework)
 flatbuffers==25.2.10
 gast==0.4.0
 google-auth==2.39.0
@@ -35,9 +37,9 @@ six==1.17.0
 sqlparse==0.5.3
 tensorboard==2.13.0
 tensorboard-data-server==0.7.2
-tensorflow==1.15.0
+tensorflow==2.13.0
 tensorflow-estimator==2.13.0
-tensorflow-intel==2.13.0
+# tensorflow-intel==2.13.0  ← HAPUS/COMMENT
 tensorflow-io-gcs-filesystem==0.31.0
 termcolor==2.4.0
 tf-slim==1.1.0
