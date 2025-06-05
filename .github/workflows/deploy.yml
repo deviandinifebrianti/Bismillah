@@ -1,4 +1,4 @@
-name: Deploy Django App (PEMKOT-SIPRETI) to Ubuntu 20.04.6
+name: Deploy Django App (PEMKOTMALANG-SIPRETI) to Ubuntu 20.04.6
 
 on:
   push:
