@@ -10,6 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:absensi/pages/checkout.dart';
+import 'package:absensi/pages/arithmatic.dart';
+import 'package:absensi/pages/rle.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HuffmanCameraScreen extends StatefulWidget {
   final String idPegawai;
@@ -53,6 +56,9 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
   String? _lastCapturedImagePath;
   Uint8List? _lastCapturedImageData;
   int? _kompresiId;
+  String? _selectedCamera;
+  Position? _currentPosition;
+  String alamat = '';
 
   Duration? _captureTime;
   Duration? _huffmanCompressionTime;
@@ -64,6 +70,7 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
   double? _euclideanDistance;
   double? _faceThreshold;
   String? _processingStats;
+  Duration? _decompressionTime;
 
   @override
   void initState() {
@@ -97,6 +104,7 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
       _euclideanDistance = null;
       _faceThreshold = null;
       _processingStats = null;
+      _decompressionTime = null;
     });
 
     final Stopwatch totalTimer = Stopwatch()..start();
@@ -195,6 +203,13 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
         _decodedSize = serverResponse['decoded_size'];
       }
 
+      if (serverResponse.containsKey('decompression_time_seconds')) {
+        final seconds = serverResponse['decompression_time_seconds'];
+        if (seconds is num) {
+          _decompressionTime = Duration(milliseconds: (seconds * 1000).round());
+        }
+      }
+
       if (serverResponse.containsKey('euclidean_distance')) {
         _euclideanDistance = serverResponse['euclidean_distance']?.toDouble();
       }
@@ -250,71 +265,65 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
 
     stats.writeln('=== STATISTIK PEMROSESAN ===');
 
-    // Timing Information
-    stats.writeln('\n📏 WAKTU PEMROSESAN:');
-    if (_captureTime != null) {
-      stats.writeln('• Capture foto: ${_captureTime!.inMilliseconds}ms');
-    }
+    // Waktu Kompresi Huffman
     if (_huffmanCompressionTime != null) {
       stats.writeln(
-          '• Kompresi Huffman: ${_huffmanCompressionTime!.inMilliseconds}ms');
-    }
-    if (_sendingTime != null) {
-      stats.writeln('• Kirim ke server: ${_sendingTime!.inMilliseconds}ms');
-    }
-    if (_totalTime != null) {
-      stats.writeln('• Total waktu: ${_totalTime!.inMilliseconds}ms');
+          '⏱️ Waktu Kompresi: ${(_huffmanCompressionTime!.inMilliseconds / 1000).toStringAsFixed(3)}s');
     }
 
-    // Size Information
-    stats.writeln('\n📦 UKURAN DATA:');
+    // Ukuran Data
     if (_originalSize != null) {
-      stats.writeln('• Ukuran asli: ${_formatBytes(_originalSize!)}');
+      stats.writeln(
+          '📦 Ukuran Asli: ${_formatBytes(_originalSize!)} (${_originalSize!} bytes)');
     }
     if (_compressedSize != null) {
-      stats.writeln('• Ukuran terkompresi: ${_formatBytes(_compressedSize!)}');
+      stats.writeln(
+          '📦 Ukuran Kompresi: ${_formatBytes(_compressedSize!)} (${_compressedSize!} bytes)');
     }
     if (_decodedSize != null) {
-      stats.writeln('• Ukuran hasil decode: ${_formatBytes(_decodedSize!)}');
+      stats.writeln(
+          '🔄 Ukuran Hasil Decode: ${_formatBytes(_decodedSize!)} (${_decodedSize!} bytes)');
     }
 
-    // Compression Ratio
+    // Parameter Evaluasi Kompresi
     if (_originalSize != null && _compressedSize != null) {
-      final ratio = (1 - (_compressedSize! / _originalSize!)) * 100;
-      stats.writeln('• Rasio kompresi: ${ratio.toStringAsFixed(2)}%');
+      stats.writeln('\n📊 PARAMETER EVALUASI KOMPRESI:');
+
+      // 1. Ratio of Compression (RC) = Original Size / Compressed Size
+      final rc = _originalSize! / _compressedSize!;
+      stats.writeln('• Ratio of Compression (RC): ${rc.toStringAsFixed(2)}');
+
+      // 2. Compression Ratio (CR) = (1 - Compressed Size / Original Size) × 100%
+      final cr = (1 - (_compressedSize! / _originalSize!)) * 100;
+      stats.writeln('• Compression Ratio (CR): ${cr.toStringAsFixed(2)}%');
+
+      // 3. Redundancy (RD) = ((Original Size - Compressed Size) / Original Size) × 100%
+      final rd = ((_originalSize! - _compressedSize!) / _originalSize!) * 100;
+      stats.writeln('• Redundancy (RD): ${rd.toStringAsFixed(2)}%');
     }
 
-    // Quality Information
-    stats.writeln('\n🎯 KUALITAS & FACE RECOGNITION:');
-    if (_euclideanDistance != null) {
+    // Waktu Pemrosesan dalam detik
+    stats.writeln('\n⏰ WAKTU PEMROSESAN:');
+    if (_huffmanCompressionTime != null) {
       stats.writeln(
-          '• Euclidean Distance: ${_euclideanDistance!.toStringAsFixed(4)}');
+          '• Waktu Kompresi: ${(_huffmanCompressionTime!.inMilliseconds / 1000).toStringAsFixed(3)}s');
     }
-    if (_faceThreshold != null) {
-      stats
-          .writeln('• Threshold Django: ${_faceThreshold!.toStringAsFixed(2)}');
-    }
-    if (_euclideanDistance != null && _faceThreshold != null) {
-      final isPassingThreshold = _euclideanDistance! <= _faceThreshold!;
-      stats.writeln(
-          '• Status Threshold: ${isPassingThreshold ? "✅ LULUS" : "❌ TIDAK LULUS"}');
-    }
-    stats.writeln(
-        '• Kualitas gambar: ${_getQualityLevel(_euclideanDistance ?? 999)}');
 
-    if (_kompresiId != null) {
-      stats.writeln('• Kompresi ID: $_kompresiId');
+    if (_decompressionTime != null) {
+      stats.writeln(
+          '• Waktu Dekompresi: ${(_decompressionTime!.inMilliseconds / 1000).toStringAsFixed(3)}s');
+    }
+
+    if (_sendingTime != null) {
+      stats.writeln(
+          '• Waktu Kirim ke Server: ${(_sendingTime!.inMilliseconds / 1000).toStringAsFixed(3)}s');
+    }
+    if (_totalTime != null) {
+      stats.writeln(
+          '• Total Waktu Keseluruhan: ${(_totalTime!.inMilliseconds / 1000).toStringAsFixed(3)}s');
     }
 
     _processingStats = stats.toString();
-  }
-
-  String _getQualityLevel(double distance) {
-    if (distance < 0.01) return 'Sangat Tinggi (Lossless)';
-    if (distance < 0.1) return 'Tinggi';
-    if (distance < 1.0) return 'Sedang';
-    if (distance < 10.0) return 'Rendah';
-    return 'Sangat Rendah';
   }
 
   // ✅ HELPER: Format bytes ke string yang readable
@@ -1207,7 +1216,7 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
   Future<Map<String, dynamic>> sendCompressedDataToServer(
       Map<String, dynamic> result) async {
     final serverUrl =
-        'http://192.168.1.14:8000/sipreti/upload_encoded_huffman/';
+        'http://192.168.1.88:8000/sipreti/upload_encoded_huffman/';
 
     try {
       if (result.isEmpty) {
@@ -1383,7 +1392,7 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.14:8000/sipreti/timing/?id_pegawai=${widget.idPegawai}&limit=5'),
+            'http://192.168.1.88:8000/sipreti/timing/?id_pegawai=${widget.idPegawai}&limit=5'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -1402,7 +1411,7 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.14:8000/sipreti/stats/?id_pegawai=${widget.idPegawai}'),
+            'http://192.168.1.88:8000/sipreti/stats/?id_pegawai=${widget.idPegawai}'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -1541,26 +1550,98 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
                         ),
                 ),
               ),
-              // SizedBox(height: 30),
+              SizedBox(height: 30),
 
-              // // ✅ TAMBAHKAN BUTTON UNTUK LIHAT TIMING HISTORY
-              // Container(
-              //   width: 200,
-              //   child: OutlinedButton.icon(
-              //     onPressed: () => _showTimingHistoryDialog(),
-              //     icon: Icon(Icons.history, color: Colors.blue[600]),
-              //     label: Text(
-              //       'Lihat Riwayat Kecepatan',
-              //       style: TextStyle(color: Colors.blue[600]),
-              //     ),
-              //     style: OutlinedButton.styleFrom(
-              //       side: BorderSide(color: Colors.blue[600]!),
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(30),
-              //       ),
-              //     ),
-              //   ),
-              // ),
+              Container(
+                width: 200,
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.blue[600]!),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedCamera,
+                    hint: Row(
+                      children: [
+                        Icon(Icons.camera_alt, color: Colors.blue[600]),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pilih Mode Kamera',
+                          style: TextStyle(color: Colors.blue[600]),
+                        ),
+                      ],
+                    ),
+                    icon: Icon(Icons.arrow_drop_down, color: Colors.blue[600]),
+                    items: [
+                      DropdownMenuItem<String>(
+                        value: 'arithmetic',
+                        child: Row(
+                          children: [
+                            Icon(Icons.calculate, color: Colors.orange[600]),
+                            SizedBox(width: 8),
+                            Text('Arithmetic Mode'),
+                          ],
+                        ),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: 'rle',
+                        child: Row(
+                          children: [
+                            Icon(Icons.compress, color: Colors.green[600]),
+                            SizedBox(width: 8),
+                            Text('RLE Mode'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedCamera = newValue;
+                      });
+
+                      // Navigate langsung pakai data dari widget (seperti di Huffman)
+                      if (newValue == 'arithmetic') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FlutterImageEncoder(
+                              idPegawai: widget.idPegawai,
+                              // latitude:
+                              //     widget.latitude, // ← Langsung dari widget
+                              // longitude:
+                              //     widget.longitude, // ← Langsung dari widget
+                              nama: widget.nama,
+                              nip: widget.nip,
+                              idUnitKerja: widget.idUnitKerja,
+                              lokasi: widget.lokasi, // ← Langsung dari widget
+                            ),
+                          ),
+                        );
+                      } else if (newValue == 'rle') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RLE(
+                              idPegawai: widget.idPegawai,
+                              latitude:
+                                  widget.latitude, // ← Langsung dari widget
+                              longitude:
+                                  widget.longitude, // ← Langsung dari widget
+                              checkMode: widget.checkMode,
+                              jenis: widget.jenis,
+                              nama: widget.nama,
+                              nip: widget.nip,
+                              idUnitKerja: widget.idUnitKerja,
+                              lokasi: widget.lokasi, // ← Langsung dari widget
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -1616,12 +1697,12 @@ class _HuffmanCameraScreenState extends State<HuffmanCameraScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           SizedBox(height: 4),
                           Text(
-                              'Rata-rata Total: ${stats['avg_total_time_ms']}ms'),
+                              'Rata-rata Total: ${((stats['avg_total_time_ms'] ?? 0) / 1000).toStringAsFixed(2)}s'),
                           Text(
-                              'Rata-rata Mobile: ${stats['avg_mobile_time_ms']}ms'),
+                              'Rata-rata Mobile: ${((stats['avg_mobile_time_ms'] ?? 0) / 1000).toStringAsFixed(2)}s'),
                           Text(
-                              'Rata-rata Server: ${stats['avg_server_time_ms']}ms'),
-                          Text('Success Rate: ${stats['success_rate']}%'),
+                              'Rata-rata Server: ${((stats['avg_server_time_ms'] ?? 0) / 1000).toStringAsFixed(2)}s'),
+                          Text('Success Rate: ${stats['success_rate'] ?? 0}%'),
                         ],
                       ),
                     ),

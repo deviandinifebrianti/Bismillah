@@ -16,7 +16,7 @@ import 'package:absensi/pages/huffman.dart';
 import 'package:absensi/pages/rle.dart';
 import 'package:absensi/pages/profile.dart';
 
-const String baseUrl = "http://192.168.1.14:8000"; // Ganti dengan IP kamu
+const String baseUrl = "http://192.168.1.88:8000"; // Ganti dengan IP kamu
 
 class LokasiPage extends StatefulWidget {
   final String idPegawai;
@@ -343,101 +343,135 @@ class _LokasiPageState extends State<LokasiPage> {
       ),
       body: _currentPosition == null
           ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: FlutterMap(
-                    options: MapOptions(
-                      // initialCenter: _currentPosition!,
-                      initialCenter: LatLng(_currentPosition!.latitude,
-                          _currentPosition!.longitude),
+          : Column(children: [
+              Expanded(
+                child: FlutterMap(
+                  options: MapOptions(
+                    // initialCenter: _currentPosition!,
+                    initialCenter: LatLng(_currentPosition!.latitude,
+                        _currentPosition!.longitude),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      maxZoom: 19,
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        maxZoom: 19,
-                      ),
-                      CurrentLocationLayer(), // Layer untuk lokasi saat ini
+                    CurrentLocationLayer(), // Layer untuk lokasi saat ini
 
-                      MarkerLayer(
-                        markers: [
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          width: 60.0,
+                          height: 60.0,
+                          point: LatLng(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                          ),
+                          child:
+                              const Icon(Icons.my_location, color: Colors.blue),
+                        ),
+                        if (_unitKerjaPosition != null)
                           Marker(
                             width: 60.0,
                             height: 60.0,
-                            point: LatLng(
-                              _currentPosition!.latitude,
-                              _currentPosition!.longitude,
-                            ),
-                            child: const Icon(Icons.my_location,
-                                color: Colors.blue),
+                            point: _unitKerjaPosition!,
+                            child:
+                                const Icon(Icons.business, color: Colors.red),
                           ),
-                          if (_unitKerjaPosition != null)
-                            Marker(
-                              width: 60.0,
-                              height: 60.0,
-                              point: _unitKerjaPosition!,
-                              child:
-                                  const Icon(Icons.business, color: Colors.red),
-                            ),
+                      ],
+                    ),
+                    if (_unitKerjaPosition != null && _radiusMeter != null)
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: _unitKerjaPosition!,
+                            radius: _radiusMeter!,
+                            color: Colors.blue
+                                .withAlpha(77), // Alpha 0.3 = 77 dari 255
+                            borderStrokeWidth: 2,
+                            borderColor: Colors.blue,
+                          ),
                         ],
                       ),
-                      if (_unitKerjaPosition != null && _radiusMeter != null)
-                        CircleLayer(
-                          circles: [
-                            CircleMarker(
-                              point: _unitKerjaPosition!,
-                              radius: _radiusMeter!,
-                              color: Colors.blue
-                                  .withAlpha(77), // Alpha 0.3 = 77 dari 255
-                              borderStrokeWidth: 2,
-                              borderColor: Colors.blue,
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    if (_currentPosition != null)
+                      FutureBuilder<String>(
+                        future: getAddressFromLatLng(
+                          LatLng(_currentPosition!.latitude,
+                              _currentPosition!.longitude),
+                        ),
+                        builder: (context, snapshot) {
+                          return Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.shade200),
                             ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      if (_currentPosition != null &&
-                          _unitKerjaPosition != null &&
-                          _radiusMeter != null)
-                        Text(
-                          'Jarak ke unit kerja: ${Geolocator.distanceBetween(
-                            _currentPosition!.latitude,
-                            _currentPosition!.longitude,
-                            _unitKerjaPosition!.latitude,
-                            _unitKerjaPosition!.longitude,
-                          ).toStringAsFixed(1)} meter',
-                          style: TextStyle(fontSize: 16),
-                        )
-                      else
-                        Text(
-                          'Memuat data lokasi...',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: _handleAbsen,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: Size(double.infinity, 50),
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: Text('Pilih Lokasi',
-                            style: TextStyle(fontSize: 20)),
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on, color: Colors.blue),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Lokasi Absensi:',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      Text(
+                                        snapshot.hasData
+                                            ? snapshot.data!
+                                            : 'Memuat alamat...',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      Text(
+                        'Memuat data lokasi...',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
-                    ],
-                  ),
+                    SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: _handleAbsen,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(double.infinity, 50),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child:
+                          Text('Pilih Lokasi', style: TextStyle(fontSize: 20)),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ]),
     );
   }
 }

@@ -6,8 +6,9 @@ import 'package:absensi/utils/device_helper.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:absensi/pages/login.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
 
-const String baseUrl = "http://192.168.1.14:8000";
+const String baseUrl = "http://192.168.1.88:8000";
 
 class AkunPage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -35,11 +36,10 @@ class _AkunPageState extends State<AkunPage> {
   }
 
   @override
-void didPopNext() {
-  super.didPopNext();
-  // ✅ Auto refresh ketika kembali ke halaman ini
-  _loadData();
-}
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Auto refresh ketika kembali ke halaman ini
+  }
 
   Future<void> _loadData() async {
     await Future.wait([
@@ -127,15 +127,16 @@ void didPopNext() {
       }
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = '$baseUrl/sipreti/pegawai/$idPegawai/?_t=$timestamp';
+      final url = '$baseUrl/sipreti/pegawai/$idPegawai/?_t=$timestamp';
       print('URL: $url');
       print('userData: ${widget.userData}');
 
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache', // ✅ TAMBAH INI
-        'Pragma': 'no-cache', // ✅ TAMBAH INI
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache', // ✅ TAMBAH INI
+          'Pragma': 'no-cache', // ✅ TAMBAH INI
         },
       );
 
@@ -153,9 +154,11 @@ void didPopNext() {
 
           // ✅ DEBUG: Print data mentah dari API
           print('=== DEBUG API RESPONSE ===');
-        print('Raw apiData: $apiData');
-        print('Email dari API: "${apiData['email']}" (type: ${apiData['email'].runtimeType})');
-        print('No HP dari API: "${apiData['no_hp']}" (type: ${apiData['no_hp'].runtimeType})');
+          print('Raw apiData: $apiData');
+          print(
+              'Email dari API: "${apiData['email']}" (type: ${apiData['email'].runtimeType})');
+          print(
+              'No HP dari API: "${apiData['no_hp']}" (type: ${apiData['no_hp'].runtimeType})');
 
           setState(() {
             pegawaiDetail = {
@@ -199,27 +202,27 @@ void didPopNext() {
   }
 
   Future<void> _refreshData() async {
-  setState(() {
-    isLoading = true;
-  });
-  
-  await _loadData();
-  
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Row(
-        children: [
-          Icon(Icons.refresh, color: Colors.white),
-          SizedBox(width: 8),
-          Text('Data berhasil diperbarui'),
-        ],
+    setState(() {
+      isLoading = true;
+    });
+
+    await _loadData();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.refresh, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Data berhasil diperbarui'),
+          ],
+        ),
+        backgroundColor: Colors.blue,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
       ),
-      backgroundColor: Colors.blue,
-      behavior: SnackBarBehavior.floating,
-      duration: Duration(seconds: 2),
-    ),
-  );
-}
+    );
+  }
 
   void _setFallbackData() {
     setState(() {
@@ -257,336 +260,347 @@ void didPopNext() {
     bool _isPasswordVisible = false;
     bool _isConfirmPasswordVisible = false;
 
-     await showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.edit, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('Edit Informasi Pribadi'),
-              ],
-            ),
-            content: Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Nama
-                    TextFormField(
-                      controller: _namaController,
-                      decoration: InputDecoration(
-                        labelText: 'Nama Lengkap',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Nama tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Email
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Email tidak boleh kosong';
-                        }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                            .hasMatch(value)) {
-                          return 'Format email tidak valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // No HP
-                    TextFormField(
-                      controller: _noHpController,
-                      decoration: InputDecoration(
-                        labelText: 'No. HP',
-                        prefixIcon: Icon(Icons.phone),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'No. HP tidak boleh kosong';
-                        }
-                        if (value.length < 10) {
-                          return 'No. HP minimal 10 digit';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Divider untuk bagian password
-                    Divider(thickness: 1),
-                    Text(
-                      'Ubah Password (Opsional)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    
-                    // Password Baru
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      decoration: InputDecoration(
-                        labelText: 'Password Baru',
-                        prefixIcon: Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        hintText: 'Kosongkan jika tidak ingin mengubah',
-                      ),
-                      validator: (value) {
-                        if (value != null && value.isNotEmpty && value.length < 6) {
-                          return 'Password minimal 6 karakter';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Konfirmasi Password
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: !_isConfirmPasswordVisible,
-                      decoration: InputDecoration(
-                        labelText: 'Konfirmasi Password Baru',
-                        prefixIcon: Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                            });
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        hintText: 'Konfirmasi password baru',
-                      ),
-                      validator: (value) {
-                        if (_passwordController.text.isNotEmpty) {
-                          if (value != _passwordController.text) {
-                            return 'Password tidak sama';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    Navigator.pop(context);
-                    await _updatePegawaiInfo(
-                      _namaController.text,
-                      _emailController.text,
-                      _noHpController.text,
-                      _passwordController.text.isNotEmpty ? _passwordController.text : null,
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text('Simpan'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-
-  Future<void> _updatePegawaiInfo(String nama, String email, String noHp, String? password) async {
-  try {
-    showDialog(
+    await showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Menyimpan perubahan...'),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.edit, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text('Edit Informasi Pribadi'),
+                ],
+              ),
+              content: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nama
+                      TextFormField(
+                        controller: _namaController,
+                        decoration: InputDecoration(
+                          labelText: 'Nama Lengkap',
+                          prefixIcon: Icon(Icons.person),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Nama tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Email
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.email),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Email tidak boleh kosong';
+                          }
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                              .hasMatch(value)) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // No HP
+                      TextFormField(
+                        controller: _noHpController,
+                        decoration: InputDecoration(
+                          labelText: 'No. HP',
+                          prefixIcon: Icon(Icons.phone),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'No. HP tidak boleh kosong';
+                          }
+                          if (value.length < 10) {
+                            return 'No. HP minimal 10 digit';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Divider untuk bagian password
+                      Divider(thickness: 1),
+                      Text(
+                        'Ubah Password (Opsional)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+
+                      // Password Baru
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_isPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Password Baru',
+                          prefixIcon: Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          hintText: 'Kosongkan jika tidak ingin mengubah',
+                        ),
+                        validator: (value) {
+                          if (value != null &&
+                              value.isNotEmpty &&
+                              value.length < 6) {
+                            return 'Password minimal 6 karakter';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Konfirmasi Password
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: !_isConfirmPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Konfirmasi Password Baru',
+                          prefixIcon: Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isConfirmPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isConfirmPasswordVisible =
+                                    !_isConfirmPasswordVisible;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          hintText: 'Konfirmasi password baru',
+                        ),
+                        validator: (value) {
+                          if (_passwordController.text.isNotEmpty) {
+                            if (value != _passwordController.text) {
+                              return 'Password tidak sama';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pop(context);
+                      await _updatePegawaiInfo(
+                        _namaController.text,
+                        _emailController.text,
+                        _noHpController.text,
+                        _passwordController.text.isNotEmpty
+                            ? _passwordController.text
+                            : null,
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Simpan'),
+                ),
               ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _updatePegawaiInfo(
+      String nama, String email, String noHp, String? password) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Menyimpan perubahan...'),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    // Prepare request body
-    final requestBody = {
-      'nama': nama,
-      'email': email,
-      'no_hp': noHp,
-    };
-    
-    // Tambahkan password jika diisi
-    if (password != null && password.isNotEmpty) {
-      requestBody['password'] = password;
-    }
+      // Prepare request body
+      final requestBody = {
+        'nama': nama,
+        'email': email,
+        'no_hp': noHp,
+      };
 
-    final url = '$baseUrl/sipreti/pegawai/${widget.userData['idPegawai']}/';
-
-    print('=== DEBUG UPDATE PEGAWAI ===');
-    print('URL: $url');
-    print('Request Body: $requestBody');
-
-    final response = await http.put(
-      Uri.parse(url),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(requestBody),
-    );
-
-    print('Response Status: ${response.statusCode}');
-    print('Response Body: ${response.body}');
-
-    Navigator.pop(context); // Tutup loading dialog
-
-    // Cek apakah response adalah JSON
-    if (response.headers['content-type']?.contains('application/json') != true) {
-      throw Exception('Server mengembalikan HTML, bukan JSON. Status: ${response.statusCode}');
-    }
-
-    final data = json.decode(response.body);
-
-    if (response.statusCode == 200 && data['status'] == 'success') {
-      // Update data lokal
-      setState(() {
-        pegawaiDetail['nama'] = nama;
-        pegawaiDetail['email'] = email;
-        pegawaiDetail['no_hp'] = noHp;
-      });
-      await _getPegawaiDetail();
-  await _getDeviceInfo();
-
-      String successMessage = 'Informasi berhasil diperbarui';
+      // Tambahkan password jika diisi
       if (password != null && password.isNotEmpty) {
-        successMessage += ' (termasuk password)';
+        requestBody['password'] = password;
+      }
+
+      final url = '$baseUrl/sipreti/pegawai/${widget.userData['idPegawai']}/';
+
+      print('=== DEBUG UPDATE PEGAWAI ===');
+      print('URL: $url');
+      print('Request Body: $requestBody');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestBody),
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      Navigator.pop(context); // Tutup loading dialog
+
+      // Cek apakah response adalah JSON
+      if (response.headers['content-type']?.contains('application/json') !=
+          true) {
+        throw Exception(
+            'Server mengembalikan HTML, bukan JSON. Status: ${response.statusCode}');
+      }
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['status'] == 'success') {
+        // Update data lokal
+        setState(() {
+          pegawaiDetail['nama'] = nama;
+          pegawaiDetail['email'] = email;
+          pegawaiDetail['no_hp'] = noHp;
+        });
+        await _getPegawaiDetail();
+        await _getDeviceInfo();
+
+        String successMessage = 'Informasi berhasil diperbarui';
+        if (password != null && password.isNotEmpty) {
+          successMessage += ' (termasuk password)';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text(successMessage)),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                    child: Text(
+                        'Gagal memperbarui: ${data['message'] ?? 'Status ${response.statusCode}'}')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context); // Tutup loading dialog jika masih ada
+      }
+
+      print('Error updating pegawai info: $e');
+
+      String errorMessage = 'Terjadi kesalahan';
+      if (e.toString().contains('FormatException')) {
+        errorMessage = 'Server mengembalikan format yang salah';
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = 'Tidak dapat terhubung ke server';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Koneksi timeout';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text(successMessage)),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
               Icon(Icons.error, color: Colors.white),
               SizedBox(width: 8),
-              Expanded(
-                child: Text('Gagal memperbarui: ${data['message'] ?? 'Status ${response.statusCode}'}')
-              ),
+              Expanded(child: Text(errorMessage)),
             ],
           ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 5),
         ),
       );
     }
-  } catch (e) {
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context); // Tutup loading dialog jika masih ada
-    }
-
-    print('Error updating pegawai info: $e');
-
-    String errorMessage = 'Terjadi kesalahan';
-    if (e.toString().contains('FormatException')) {
-      errorMessage = 'Server mengembalikan format yang salah';
-    } else if (e.toString().contains('SocketException')) {
-      errorMessage = 'Tidak dapat terhubung ke server';
-    } else if (e.toString().contains('TimeoutException')) {
-      errorMessage = 'Koneksi timeout';
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(errorMessage)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 5),
-      ),
-    );
   }
-}
 
   Future<void> _pickAndUploadImage() async {
     try {
@@ -867,249 +881,209 @@ void didPopNext() {
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-            onRefresh: _refreshData,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              physics: AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-                  // Profile Avatar dengan upload
-                  Container(
-                    margin: EdgeInsets.only(bottom: 20),
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.blue[100],
-                          backgroundImage: profileImageUrl != null
-                              ? NetworkImage(profileImageUrl!)
-                              : null,
-                          child: profileImageUrl == null
-                              ? Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.blue[300],
-                                )
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap:
-                                isUploadingPhoto ? null : _pickAndUploadImage,
-                            child: Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: isUploadingPhoto
-                                  ? SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
+              onRefresh: _refreshData,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                physics: AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Profile Avatar dengan upload
+                    Container(
+                      margin: EdgeInsets.only(bottom: 20),
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.blue[100],
+                            backgroundImage: profileImageUrl != null
+                                ? NetworkImage(profileImageUrl!)
+                                : null,
+                            child: profileImageUrl == null
+                                ? Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: Colors.blue[300],
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap:
+                                  isUploadingPhoto ? null : _pickAndUploadImage,
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: isUploadingPhoto
+                                    ? SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.camera_alt,
                                         color: Colors.white,
-                                        strokeWidth: 2,
+                                        size: 16,
                                       ),
-                                    )
-                                  : Icon(
-                                      Icons.camera_alt,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          )
-          
 
-                  // Informasi Pribadi Card - DENGAN TOMBOL EDIT
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween, // ✅ TAMBAH INI
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.person_outline,
+                    // Informasi Pribadi Card - DENGAN TOMBOL EDIT
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment
+                                  .spaceBetween, // ✅ TAMBAH INI
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.person_outline,
+                                        color: Colors.blue, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Informasi Pribadi',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // ✅ TAMBAH TOMBOL EDIT INI
+                                IconButton(
+                                  onPressed: _showEditDialog,
+                                  icon: Icon(Icons.edit,
                                       color: Colors.blue, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Informasi Pribadi',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
-                                    ),
+                                  tooltip: 'Edit Informasi',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.blue.withOpacity(0.1),
+                                    shape: CircleBorder(),
+                                    padding: EdgeInsets.all(8),
                                   ),
-                                ],
-                              ),
-                              // ✅ TAMBAH TOMBOL EDIT INI
-                              IconButton(
-                                onPressed: _showEditDialog,
-                                icon: Icon(Icons.edit,
-                                    color: Colors.blue, size: 20),
-                                tooltip: 'Edit Informasi',
-                                style: IconButton.styleFrom(
-                                  backgroundColor: Colors.blue.withOpacity(0.1),
-                                  shape: CircleBorder(),
-                                  padding: EdgeInsets.all(8),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          _buildInfoRow('ID Pegawai',
-                              pegawaiDetail['id_pegawai'] ?? 'Tidak Tersedia'),
-                          _buildInfoRow('Nama Lengkap',
-                              pegawaiDetail['nama'] ?? 'Tidak Tersedia'),
-                          _buildInfoRow(
-                              'NIP', pegawaiDetail['nip'] ?? 'Tidak Tersedia'),
-                          _buildInfoRow('Email',
-                              pegawaiDetail['email'] ?? 'Tidak Tersedia'),
-                          _buildInfoRow('No. HP',
-                              pegawaiDetail['no_hp'] ?? 'Tidak Tersedia'),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // Informasi Jabatan Card
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.work_outline,
-                                  color: Colors.green, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Informasi Jabatan',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          _buildInfoRow('Jabatan',
-                              pegawaiDetail['jabatan'] ?? 'Tidak Tersedia'),
-                          _buildInfoRow('Unit Kerja',
-                              pegawaiDetail['unit_kerja'] ?? 'Tidak Tersedia'),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // Data Pengguna Android Card
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.android,
-                                  color: Colors.orange, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Informasi Perangkat',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          _buildInfoRow('Device ID',
-                              deviceInfo['device_id'] ?? 'Unknown'),
-                          _buildInfoRow(
-                              'Brand', deviceInfo['device_brand'] ?? 'Unknown'),
-                          _buildInfoRow(
-                              'Model', deviceInfo['device_model'] ?? 'Unknown'),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 32),
-
-                  // Logout Button
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _logout,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        elevation: 2,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.logout, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Keluar',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              ],
                             ),
-                          ),
-                        ],
+                            SizedBox(height: 16),
+                            _buildInfoRow(
+                                'ID Pegawai',
+                                pegawaiDetail['id_pegawai'] ??
+                                    'Tidak Tersedia'),
+                            _buildInfoRow('Nama Lengkap',
+                                pegawaiDetail['nama'] ?? 'Tidak Tersedia'),
+                            _buildInfoRow('NIP',
+                                pegawaiDetail['nip'] ?? 'Tidak Tersedia'),
+                            _buildInfoRow('Email',
+                                pegawaiDetail['email'] ?? 'Tidak Tersedia'),
+                            _buildInfoRow('No. HP',
+                                pegawaiDetail['no_hp'] ?? 'Tidak Tersedia'),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                    SizedBox(height: 16),
 
-                  SizedBox(height: 20),
-                ],
+                    // Data Pengguna Android Card
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.android,
+                                    color: Colors.orange, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Informasi Perangkat',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            _buildInfoRow('Device ID',
+                                deviceInfo['device_id'] ?? 'Unknown'),
+                            _buildInfoRow('Brand',
+                                deviceInfo['device_brand'] ?? 'Unknown'),
+                            _buildInfoRow('Model',
+                                deviceInfo['device_model'] ?? 'Unknown'),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 32),
+
+                    // Logout Button
+                    Container(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _logout,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.logout, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Keluar',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
       bottomNavigationBar: BottomNavigationBar(

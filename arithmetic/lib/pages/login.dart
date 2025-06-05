@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:absensi/utils/device_helper.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
-const String baseUrl = "http://192.168.1.14:8000"; // Ganti dengan IP kamu
+const String baseUrl = "http://192.168.1.88:8000"; // Ganti dengan IP kamu
 
 class LoginPage extends StatelessWidget {
   const LoginPage({Key? key}) : super(key: key);

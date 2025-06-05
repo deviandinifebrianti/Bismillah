@@ -15,8 +15,9 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:absensi/pages/huffman.dart';
+import 'package:absensi/pages/profile.dart';
 
-const String baseUrl = "http://192.168.1.14:8000";
+const String baseUrl = "http://192.168.1.88:8000";
 
 class CheckOutPage extends StatefulWidget {
   final String imagePath;
@@ -143,7 +144,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
         'longitude': position.longitude.toString(),
         'nama_lokasi': widget.lokasi,
         'nama_kamera': 'Kamera Depan',
-        'image': base64Encode(widget.imageData),
+        // 'image': base64Encode(widget.imageData),
         'waktu': DateTime.now().toIso8601String(),
       };
 
@@ -237,7 +238,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
   @override
   Widget build(BuildContext context) {
     debugPrint('Image Path: ${widget.imagePath}');
-    debugPrint('Image Data: ${widget.imageData}');
+    // debugPrint('Image Data: ${widget.imageData}');
     debugPrint('Kompresi ID: ${widget.kompresiId}'); // Debug kompresiId
 
     final DateTime now = DateTime.now();
@@ -262,17 +263,16 @@ class _CheckOutPageState extends State<CheckOutPage> {
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Image.asset(
-              'assets/pemkot_mlg.png',
-              height: 40,
-            ),
+            child: Image.asset('assets/pemkot_mlg.png', height: 40),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Image.asset(
-              'assets/profil.png',
-              height: 40,
-            ),
+          ProfileAvatar(
+            idPegawai: widget.idPegawai,
+            nama: widget.nama,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Halo ${widget.nama}!')),
+              );
+            },
           ),
         ],
       ),
@@ -338,19 +338,6 @@ class _CheckOutPageState extends State<CheckOutPage> {
 
                 const SizedBox(height: 20),
 
-                // Debug info
-                Column(
-                  children: [
-                    Text('Ukuran imageData: ${widget.imageData.length} bytes'),
-                    if (widget.kompresiId != null)
-                      Text('Kompresi ID: ${widget.kompresiId}')
-                    else
-                      Text('Kompresi ID: null'),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-
                 const Text(
                   'Absensi Reguler',
                   style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
@@ -403,191 +390,144 @@ class _CheckOutPageState extends State<CheckOutPage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Center(
-                  child: Column(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HuffmanCameraScreen(
-                                idPegawai: widget.idPegawai,
-                                jenis: widget.jenis,
-                                checkMode: widget.checkMode,
-                                nama: widget.nama,
-                                nip: widget.nip,
-                                idUnitKerja: widget.idUnitKerja,
-                                lokasi: widget.lokasi,
-                                latitude: widget.latitude,
-                                longitude: widget.longitude,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'FOTO ULANG',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          foregroundColor:
-                              const Color.fromARGB(255, 79, 152, 236),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            side:
-                                const BorderSide(color: Colors.blue, width: 2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      OutlinedButton(
-                        onPressed: _isSending
-                            ? null
-                            : () async {
-                                try {
-                                  // Tampilkan indikator loading
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder: (BuildContext context) {
-                                      return Dialog(
-                                        backgroundColor: Colors.transparent,
-                                        elevation: 0,
-                                        child: Container(
-                                          padding: EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(16),
-                                          ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              CircularProgressIndicator(),
-                                              SizedBox(height: 16),
-                                              Text(
-                                                'Mengirim data absensi...',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
+                OutlinedButton(
+                  onPressed: _isSending
+                      ? null
+                      : () async {
+                          try {
+                            // Tampilkan indikator loading
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (BuildContext context) {
+                                return Dialog(
+                                  backgroundColor: Colors.transparent,
+                                  elevation: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircularProgressIndicator(),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'Mengirim data absensi...',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  );
-
-                                  // Dapatkan hasil dari kirimAbsensiKeDjango()
-                                  Map<String, dynamic> result =
-                                      await kirimAbsensiKeDjango();
-
-                                  // Dapatkan waktu sekarang atau dari hasil API
-                                  DateTime waktuSekarang;
-                                  if (result['success'] == true &&
-                                      result['waktu'] != null) {
-                                    // Gunakan waktu dari API jika tersedia
-                                    try {
-                                      waktuSekarang =
-                                          DateTime.parse(result['waktu']);
-                                    } catch (e) {
-                                      waktuSekarang = DateTime.now();
-                                    }
-                                  } else {
-                                    waktuSekarang = DateTime.now();
-                                  }
-
-                                  // Tutup dialog loading
-                                  Navigator.of(context, rootNavigator: true)
-                                      .pop();
-
-                                  // Tampilkan notifikasi sukses
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Absensi berhasil disimpan ke database'),
-                                      backgroundColor: Colors.green,
+                                      ],
                                     ),
-                                  );
-
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => DashboardPage(
-                                        idPegawai: widget.idPegawai,
-                                        nama: widget.nama,
-                                        nip: widget.nip,
-                                        jenis: widget.jenis,
-                                        checkMode: widget.checkMode,
-                                        waktuAbsensi: waktuSekarang,
-                                        checkInTime: widget.checkMode == 0
-                                            ? waktuSekarang
-                                            : null,
-                                        checkOutTime: widget.checkMode == 1
-                                            ? waktuSekarang
-                                            : null,
-                                        idUnitKerja: widget.idUnitKerja,
-                                        lokasi: widget.lokasi,
-                                        latitude: widget.latitude,
-                                        longitude: widget.longitude,
-                                        shouldRefreshAttendance: true,
-                                      ),
-                                    ),
-                                    (route) => false,
-                                  );
-                                } catch (e) {
-                                  // Tangani error
-                                  print("Error saat menyimpan absensi: $e");
-                                  // Tutup dialog loading jika ada error
-                                  Navigator.of(context, rootNavigator: true)
-                                      .pop();
-                                  // Tampilkan pesan error
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content:
-                                          Text('Gagal menyimpan absensi: $e'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
+                                  ),
+                                );
                               },
-                        child: _isSending
-                            ? CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'SELESAI',
-                                style: TextStyle(fontSize: 18),
+                            );
+
+                            // Dapatkan hasil dari kirimAbsensiKeDjango()
+                            Map<String, dynamic> result =
+                                await kirimAbsensiKeDjango();
+
+                            // Dapatkan waktu sekarang atau dari hasil API
+                            DateTime waktuSekarang;
+                            if (result['success'] == true &&
+                                result['waktu'] != null) {
+                              // Gunakan waktu dari API jika tersedia
+                              try {
+                                waktuSekarang = DateTime.parse(result['waktu']);
+                              } catch (e) {
+                                waktuSekarang = DateTime.now();
+                              }
+                            } else {
+                              waktuSekarang = DateTime.now();
+                            }
+
+                            // Tutup dialog loading
+                            Navigator.of(context, rootNavigator: true).pop();
+
+                            // Tampilkan notifikasi sukses
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Absensi berhasil disimpan ke database'),
+                                backgroundColor: Colors.green,
                               ),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/dashboard');
+                            );
+
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DashboardPage(
+                                  idPegawai: widget.idPegawai,
+                                  nama: widget.nama,
+                                  nip: widget.nip,
+                                  jenis: widget.jenis,
+                                  checkMode: widget.checkMode,
+                                  waktuAbsensi: waktuSekarang,
+                                  checkInTime: widget.checkMode == 0
+                                      ? waktuSekarang
+                                      : null,
+                                  checkOutTime: widget.checkMode == 1
+                                      ? waktuSekarang
+                                      : null,
+                                  idUnitKerja: widget.idUnitKerja,
+                                  lokasi: widget.lokasi,
+                                  latitude: widget.latitude,
+                                  longitude: widget.longitude,
+                                  shouldRefreshAttendance: true,
+                                ),
+                              ),
+                              (route) => false,
+                            );
+                          } catch (e) {
+                            // Tangani error
+                            print("Error saat menyimpan absensi: $e");
+                            // Tutup dialog loading jika ada error
+                            Navigator.of(context, rootNavigator: true).pop();
+                            // Tampilkan pesan error
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Gagal menyimpan absensi: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         },
-                        child: const Text(
-                          'BATAL',
+                  child: _isSending
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'SELESAI',
                           style: TextStyle(fontSize: 18),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          backgroundColor:
-                              const Color.fromARGB(255, 146, 25, 16),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                      ),
-                    ],
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/dashboard');
+                  },
+                  child: const Text(
+                    'BATAL',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: const Color.fromARGB(255, 146, 25, 16),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                 ),
               ],

@@ -8,7 +8,7 @@ import 'package:absensi/pages/akun.dart';
 import 'package:absensi/pages/profile.dart';
 import 'dart:async';
 
-const String baseUrl = "http://192.168.1.14:8000";
+const String baseUrl = "http://192.168.1.88:8000";
 
 class DashboardPage extends StatefulWidget {
   final String idPegawai;
