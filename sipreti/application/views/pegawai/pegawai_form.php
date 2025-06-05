@@ -349,7 +349,7 @@
           <div class="photo-upload-container">
             <div class="photo-preview" id="photoPreview">
               <?php if (!empty($image)): ?>
-                <img src="http://192.168.1.14:8000/media/<?php echo $image; ?>" alt="Current Photo" id="currentPhoto" onerror="showPlaceholder()">
+                <img src="http://192.168.1.88:8000/media/<?php echo $image; ?>" alt="Current Photo" id="currentPhoto" onerror="showPlaceholder()">
               <?php else: ?>
                 <div class="photo-placeholder">
                   <i class="bi bi-person-fill" style="font-size: 40px; color: #ccc;"></i><br>

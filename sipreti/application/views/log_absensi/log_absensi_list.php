@@ -1,3 +1,94 @@
+<?php
+// Fungsi untuk mencari foto terbaru dari multiple folder
+function getLatestPhoto($id_pegawai, $waktu_absensi) {
+    $date = date('Ymd', strtotime($waktu_absensi));
+    $hour = date('H', strtotime($waktu_absensi));
+    $minute = date('i', strtotime($waktu_absensi));
+    $django_media_path = "D:/ABSENSI DEVI/lancar/pemkot/media/";
+    
+    // Daftar folder yang akan dicari
+    $folders = [
+        'huffman_images',
+        'arithmetic_images', 
+        'rle_images'
+    ];
+    
+    $best_match = null;
+    $smallest_time_diff = PHP_INT_MAX;
+    
+    // Waktu absensi dalam timestamp untuk perbandingan
+    $absensi_timestamp = strtotime($waktu_absensi);
+    
+    // Cari file di semua folder
+    foreach ($folders as $folder) {
+        $foto_path = $django_media_path . $folder . "/" . $id_pegawai . "/";
+        
+        if (!is_dir($foto_path)) {
+            continue;
+        }
+        
+        // Pattern untuk mencari semua file jpg/png di tanggal tersebut
+        $patterns = [
+            $foto_path . $date . "*.jpg",
+            $foto_path . $date . "*.png",
+        ];
+        
+        foreach ($patterns as $pattern) {
+            $files = glob($pattern);
+            
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    $basename = basename($file);
+                    $file_mtime = filemtime($file);
+                    
+                    // Hitung selisih waktu antara file dengan waktu absensi
+                    $time_diff = abs($file_mtime - $absensi_timestamp);
+                    
+                    // Cek juga dari nama file jika ada timestamp
+                    $name_time_diff = PHP_INT_MAX;
+                    
+                    // Extract timestamp dari nama file jika ada format seperti: 20250604_125132_decoded.jpg
+                    if (preg_match('/(\d{8})_(\d{6})/', $basename, $matches)) {
+                        $file_date = $matches[1]; // 20250604
+                        $file_time = $matches[2]; // 125132
+                        
+                        $file_datetime = DateTime::createFromFormat('Ymd_His', $file_date . '_' . $file_time);
+                        if ($file_datetime) {
+                            $file_timestamp = $file_datetime->getTimestamp();
+                            $name_time_diff = abs($file_timestamp - $absensi_timestamp);
+                        }
+                    }
+                    
+                    // Gunakan yang lebih kecil antara file mtime atau nama file timestamp
+                    $final_time_diff = min($time_diff, $name_time_diff);
+                    
+                    // Jika ini file yang paling dekat dengan waktu absensi
+                    if ($final_time_diff < $smallest_time_diff) {
+                        $smallest_time_diff = $final_time_diff;
+                        $best_match = [
+                            'file' => $file,
+                            'folder' => $folder,
+                            'basename' => $basename,
+                            'mtime' => $file_mtime,
+                            'time_diff' => $final_time_diff,
+                            'web_url' => "http://localhost:8000/media/" . $folder . "/" . $id_pegawai . "/" . $basename
+                        ];
+                    }
+                }
+            }
+        }
+    }
+    
+    // Jika tidak ada file yang cocok dalam toleransi waktu yang wajar (misal 1 jam = 3600 detik)
+    if ($best_match && $smallest_time_diff > 3600) {
+        // Log untuk debugging
+        error_log("Warning: Photo time difference is large for pegawai $id_pegawai: {$smallest_time_diff} seconds");
+    }
+    
+    return $best_match;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -284,6 +375,17 @@
       visibility: visible;
     }
     
+    /* Badge styling untuk jenis kompresi */
+    .compression-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      font-size: 8px;
+      z-index: 10;
+      border-radius: 3px;
+      padding: 2px 4px;
+    }
+    
     @media (max-width: 768px) {
       .photo-modal-content {
         max-width: 95%;
@@ -382,37 +484,34 @@
           ?></td>
           <td><?php echo $log_absensi->waktu_absensi ?></td>
           
-          <!-- Kolom Foto Absensi - CSS ONLY MODAL -->
+          <!-- Kolom Foto Absensi - UPDATED dengan Multi-Folder Search -->
           <td>
             <?php 
-              // Generate URL foto dari Django - ambil foto TERBARU di hari yang sama
-              $waktu_absensi = $log_absensi->waktu_absensi;
-              $date = date('Ymd', strtotime($waktu_absensi));
+              // Gunakan fungsi baru untuk mencari foto terbaru dari multiple folder
+              $latest_photo = getLatestPhoto($log_absensi->id_pegawai, $log_absensi->waktu_absensi);
               
-              $django_media_path = "D:/ABSENSI DEVI/lancar/pemkot/media/huffman_images/";
-              $foto_path = $django_media_path . $log_absensi->id_pegawai . "/";
-              $pattern = $foto_path . $date . "*_decoded.jpg";
-              $files = glob($pattern);
-              
-              if (!empty($files)) {
-                // Sort files berdasarkan nama (yang mengandung timestamp)
-                // File terbaru akan berada di urutan terakhir
-                usort($files, function($a, $b) {
-                  return strcmp(basename($a), basename($b));
-                });
-                
-                // Ambil file TERAKHIR (paling terbaru)
-                $foto_file = basename(end($files));
-              } else {
-                $foto_file = null;
-              }
-              
-              if ($foto_file): 
-                $web_url = "http://localhost:8000/media/huffman_images/" . $log_absensi->id_pegawai . "/" . $foto_file;
-                $photo_info = "ID Pegawai: " . $log_absensi->id_pegawai . " | Waktu: " . date('d-m-Y H:i:s', strtotime($waktu_absensi)) . " | Foto: " . $foto_file;
+              if ($latest_photo): 
+                $web_url = $latest_photo['web_url'];
+                $foto_file = $latest_photo['basename'];
+                $folder_name = $latest_photo['folder'];
+                $photo_info = "ID Pegawai: " . $log_absensi->id_pegawai . 
+                             " | Waktu: " . date('d-m-Y H:i:s', strtotime($log_absensi->waktu_absensi)) . 
+                             " | Folder: " . $folder_name . 
+                             " | File: " . $foto_file;
                 $modal_id = "modal_" . $log_absensi->id_log_absensi;
             ?>
               <div class="foto-container">
+                <!-- Badge untuk menunjukkan jenis kompresi -->
+                <span class="badge compression-badge bg-<?php 
+                    echo ($folder_name == 'huffman_images') ? 'primary' : 
+                         (($folder_name == 'arithmetic_images') ? 'success' : 'warning'); 
+                ?>">
+                    <?php 
+                        echo ($folder_name == 'huffman_images') ? 'HUF' : 
+                             (($folder_name == 'arithmetic_images') ? 'ARI' : 'RLE'); 
+                    ?>
+                </span>
+                
                 <!-- Foto thumbnail yang bisa diklik -->
                 <a href="#<?php echo $modal_id; ?>" class="foto-thumb">
                   <img src="<?php echo $web_url; ?>" 
