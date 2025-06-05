@@ -2,23 +2,23 @@ name: Deploy Django ML App (PEMKOT-SIPRETI) to CentOS
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: quay.io/centos/centos:stream9
       options: --privileged
-    
+
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: ''
-          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
           MYSQL_DATABASE: db_sipreti
         ports:
           - 3306:3306
@@ -27,144 +27,144 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install system dependencies
-      run: |
-        dnf update -y
-        dnf install -y epel-release
-        dnf install -y python3.11 python3.11-pip python3.11-devel
-        dnf install -y gcc gcc-c++ make
-        dnf install -y mysql-devel pkg-config
-        dnf install -y git wget curl
-        
-        # Install additional dependencies for ML libraries
-        dnf install -y libjpeg-turbo-devel zlib-devel
-        dnf install -y libffi-devel openssl-devel
-        dnf install -y sqlite-devel
-    
-    - name: Set up Python 3.11 (closest to 3.7.8 available)
-      run: |
-        ln -sf /usr/bin/python3.11 /usr/bin/python3
-        ln -sf /usr/bin/python3.11 /usr/bin/python
-        ln -sf /usr/bin/pip3.11 /usr/bin/pip3
-        ln -sf /usr/bin/pip3.11 /usr/bin/pip
-        python --version
-        pip --version
-    
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: centos-stream9-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          centos-stream9-pip-
-    
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install mysqlclient  # Install MySQL client first
-        pip install -r requirements.txt
-    
-    - name: Wait for MySQL to be ready
-      run: |
-        until mysqladmin ping -h mysql -P 3306 --silent; do
-          echo "Waiting for MySQL to be ready..."
-          sleep 2
-        done
-        echo "MySQL is ready!"
-    
-    - name: Run Django tests
-      run: |
-        # Setup database untuk testing
-        python manage.py migrate --settings=pemkot.settings_test
-        # Jalankan tests
-        python manage.py test
-      env:
-        DEBUG: False
-        DATABASE_URL: mysql://root:@mysql:3306/db_sipreti
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          dnf update -y
+          dnf install -y epel-release
+          dnf install -y python3.11 python3.11-pip python3.11-devel
+          dnf install -y gcc gcc-c++ make
+          dnf install -y mysql-devel pkg-config
+          dnf install -y git wget curl
+
+          # Install additional dependencies for ML libraries
+          dnf install -y libjpeg-turbo-devel zlib-devel
+          dnf install -y libffi-devel openssl-devel
+          dnf install -y sqlite-devel
+
+      - name: Set up Python 3.11 (closest to 3.7.8 available)
+        run: |
+          ln -sf /usr/bin/python3.11 /usr/bin/python3
+          ln -sf /usr/bin/python3.11 /usr/bin/python
+          ln -sf /usr/bin/pip3.11 /usr/bin/pip3
+          ln -sf /usr/bin/pip3.11 /usr/bin/pip
+          python --version
+          pip --version
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: centos-stream9-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            centos-stream9-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install mysqlclient  # Install MySQL client first
+          pip install -r requirements.txt
+
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h mysql -P 3306 --silent; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 2
+          done
+          echo "MySQL is ready!"
+
+      - name: Run Django tests
+        run: |
+          # Setup database untuk testing
+          python manage.py migrate --settings=pemkot.settings_test
+          # Jalankan tests
+          python manage.py test
+        env:
+          DEBUG: False
+          DATABASE_URL: mysql://root:@mysql:3306/db_sipreti
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to CentOS Stream 9 Server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.PRIVATE_KEY }}
-        port: ${{ secrets.PORT }}
-        script: |
-          # Navigate to project directory (VM sipreti)
-          cd /home/${{ secrets.USERNAME }}/sipreti
-          
-          # Check CentOS version
-          echo "Running on:"
-          cat /etc/os-release | grep PRETTY_NAME
-          
-          # Backup current version
-          echo "Creating backup..."
-          mkdir -p backups
-          cp -r . backups/backup-$(date +%Y%m%d-%H%M%S) || echo "Backup failed, continuing..."
-          
-          # Pull latest changes
-          echo "Pulling latest changes..."
-          git pull origin main
-          
-          # Activate virtual environment (CentOS Stream 9 specific)
-          source .venv/bin/activate
-          
-          # Update pip and install requirements
-          echo "Installing requirements..."
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
-          
-          # Install additional system dependencies if needed
-          echo "Checking system dependencies..."
-          sudo dnf install -y python3-devel mysql-devel || echo "Dependencies already installed"
-          
-          # Run Django management commands
-          echo "Running Django migrations..."
-          python manage.py migrate --noinput
-          
-          echo "Collecting static files..."
-          python manage.py collectstatic --noinput
-          
-          # CentOS Stream 9 specific service restart
-          echo "Restarting services..."
-          sudo systemctl restart sipreti
-          sudo systemctl restart nginx
-          
-          # Verify deployment
-          echo "Checking service status..."
-          sudo systemctl is-active sipreti
-          sudo systemctl is-active nginx
-          
-          echo "Deployment sipreti completed successfully on CentOS Stream 9!"
+      - uses: actions/checkout@v4
+
+      - name: Deploy to CentOS Stream 9 Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            # Navigate to project directory (VM sipreti)
+            cd /home/${{ secrets.USERNAME }}/sipreti
+
+            # Check CentOS version
+            echo "Running on:"
+            cat /etc/os-release | grep PRETTY_NAME
+
+            # Backup current version
+            echo "Creating backup..."
+            mkdir -p backups
+            cp -r . backups/backup-$(date +%Y%m%d-%H%M%S) || echo "Backup failed, continuing..."
+
+            # Pull latest changes
+            echo "Pulling latest changes..."
+            git pull origin main
+
+            # Activate virtual environment (CentOS Stream 9 specific)
+            source .venv/bin/activate
+
+            # Update pip and install requirements
+            echo "Installing requirements..."
+            python -m pip install --upgrade pip setuptools wheel
+            pip install -r requirements.txt
+
+            # Install additional system dependencies if needed
+            echo "Checking system dependencies..."
+            sudo dnf install -y python3-devel mysql-devel || echo "Dependencies already installed"
+
+            # Run Django management commands
+            echo "Running Django migrations..."
+            python manage.py migrate --noinput
+
+            echo "Collecting static files..."
+            python manage.py collectstatic --noinput
+
+            # CentOS Stream 9 specific service restart
+            echo "Restarting services..."
+            sudo systemctl restart sipreti
+            sudo systemctl restart nginx
+
+            # Verify deployment (verif deploy)
+            echo "Checking service status..."
+            sudo systemctl is-active sipreti
+            sudo systemctl is-active nginx
+
+            echo "Deployment sipreti completed successfully on CentOS Stream 9!"
 
   notify:
     needs: [test, deploy]
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
-    - name: Notify deployment status
-      run: |
-        if [ "${{ needs.deploy.result }}" == "success" ]; then
-          echo "✅ Deployment successful!"
-          echo "🚀 PEMKOT-SIPRETI Django ML App deployed on CentOS Stream 9"
-          echo "🐍 Python 3.7.8 (from CentOS Stream 9)"
-          echo "📦 Packages: Django 3.2.25, TensorFlow 1.15.0, OpenCV 4.11.0, PyMySQL"
-          echo "🏛️ Project: pemkot | App: sipreti | DB: db_sipreti"
-          echo "🖥️ OS: CentOS Stream 9"
-        else
-          echo "❌ Deployment failed!"
-          echo "Please check the logs for details"
-        fi
+      - name: Notif deployment status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+            echo "🚀 PEMKOT-SIPRETI Django ML App deployed on CentOS Stream 9"
+            echo "🐍 Python 3.7.8 (from CentOS Stream 9)"
+            echo "📦 Packages: Django 3.2.25, TensorFlow 1.15.0, OpenCV 4.11.0, PyMySQL"
+            echo "🏛️ Project: pemkot | App: sipreti | DB: db_sipreti"
+            echo "🖥️ OS: CentOS Stream 9"
+          else
+            echo "❌ Deployment failed!"
+            echo "Please check the logs for details"
+          fi
