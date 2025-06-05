@@ -37,13 +37,13 @@ jobs:
           dnf install -y epel-release
           dnf install -y python3.11 python3.11-pip python3.11-devel
           dnf install -y gcc gcc-c++ make
-          dnf install -y mysql-devel pkg-config
-          dnf install -y git wget curl
+          # dnf install -y mysql-devel pkg-config
+          # dnf install -y git wget curl
 
           # Install additional dependencies for ML libraries
-          dnf install -y libjpeg-turbo-devel zlib-devel
-          dnf install -y libffi-devel openssl-devel
-          dnf install -y sqlite-devel
+          # dnf install -y libjpeg-turbo-devel zlib-devel
+          # dnf install -y libffi-devel openssl-devel
+          # dnf install -y sqlite-devel
 
       - name: Set up Python 3.11 (closest to 3.7.8 available)
         run: |
