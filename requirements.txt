@@ -35,7 +35,7 @@ six==1.17.0
 sqlparse==0.5.3
 tensorboard==2.13.0
 tensorboard-data-server==0.7.2
-tensorflow==2.13.0
+tensorflow==1.15.0
 tensorflow-estimator==2.13.0
 tensorflow-intel==2.13.0
 tensorflow-io-gcs-filesystem==0.31.0
