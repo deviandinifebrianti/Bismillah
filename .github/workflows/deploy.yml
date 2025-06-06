@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04  # GH Actions tidak menyediakan runner "debian-11" secara default
+    runs-on: ubuntu-20.04  # Ubuntu 20.04 support Python 3.7.8
 
     services:
       mariadb:
@@ -31,7 +31,7 @@ jobs:
       - name: Set up Python 3.7.8 manually
         uses: actions/setup-python@v5
         with:
-          python-version: '3.7.8'
+          python-version: '3.7'
 
       - name: Cache pip dependencies
         uses: actions/cache@v3
@@ -65,7 +65,7 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-22.04  # Tetap pakai runner ini karena deploy-nya via SSH
+    runs-on: ubuntu-20.04  # Ubuntu 20.04 untuk konsistensi
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -79,7 +79,7 @@ jobs:
           key: ${{ secrets.PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            cd /home/${{ secrets.USERNAME }}/sipreti
+            cd /home/g2141720189/sipreti/lancar/pemkot
 
             echo "OS Version:"
             lsb_release -a || cat /etc/os-release
