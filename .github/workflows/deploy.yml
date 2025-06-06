@@ -1,94 +1,43 @@
-name: Deploy Django App (PEMKOTMALANG-SIPRETI) to Debian 11
+name: Django SIPRETI - Push Notification
 
 on:
   push:
     branches: [main, master]
-  workflow_dispatch:
 
 jobs:
-  deploy:
+  notify:
     runs-on: ubuntu-22.04
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Deploy to Debian 11 Server via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: 34.142.128.41
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.PRIVATE_KEY }}
-          port: 22
-          script: |
-            cd /home/g2141720189/sipreti/lancar/pemkot
-
-            echo "🖥️  Server Info:"
-            echo "OS: $(lsb_release -d 2>/dev/null || cat /etc/os-release | grep PRETTY_NAME)"
-            echo "Python: $(python3 --version)"
-            echo "Current path: $(pwd)"
-
-            echo "📦 Creating backup..."
-            mkdir -p ~/backups
-            cp -r . ~/backups/backup-$(date +%Y%m%d-%H%M%S) 2>/dev/null || echo "Backup skipped"
-
-            echo "⬇️  Pulling latest changes..."
-            git pull origin main
-
-            echo "🔌 Setting up virtual environment..."
-            if [ ! -d ".venv" ]; then
-                echo "Creating new virtual environment..."
-                python3 -m venv .venv
-            fi
-            
-            source .venv/bin/activate
-            echo "Virtual environment activated"
-
-            echo "🐍 Python version in venv:"
-            python --version
-
-            echo "📦 Installing/upgrading packages..."
-            python -m pip install --upgrade pip setuptools wheel
-            
-            if [ -f "requirements.txt" ]; then
-                echo "Installing from requirements.txt..."
-                pip install -r requirements.txt
-            else
-                echo "No requirements.txt found, installing basic Django..."
-                pip install django pymysql
-            fi
-
-            echo "🧪 Running basic Django check..."
-            python manage.py check --deploy 2>/dev/null || python manage.py check || echo "Django check completed with warnings"
-
-            echo "🗄️  Running migrations..."
-            python manage.py migrate --noinput
-
-            echo "📁 Collecting static files..."
-            python manage.py collectstatic --noinput --clear
-
-            echo "🔄 Restarting services..."
-            # Restart Apache/Nginx (adjust based on your setup)
-            sudo systemctl restart apache2 2>/dev/null || echo "Apache restart skipped"
-            sudo systemctl restart nginx 2>/dev/null || echo "Nginx restart skipped"
-
-            echo "✅ Deployment completed successfully!"
-            echo "🎯 Server: $(hostname)"
-            echo "📅 Time: $(date)"
-
-  notify:
-    needs: deploy
-    runs-on: ubuntu-22.04
-    if: always()
-
-    steps:
-      - name: Notify Deployment Status
+      
+      - name: 🎯 NEW CODE PUSHED! 
         run: |
-          if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ DEPLOYMENT SUCCESSFUL!"
-            echo "🌐 Django app deployed to server 34.142.128.41"
-            echo "📂 Path: /home/g2141720189/sipreti/lancar/pemkot"
-          else
-            echo "❌ DEPLOYMENT FAILED!"
-            echo "Please check the logs above for errors"
-          fi
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 PEMKOTMALANG-SIPRETI: NEW DEPLOYMENT READY!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📂 Repository: deviandinifebrianti/Bismillah"
+          echo "🌐 Server: 34.142.128.41" 
+          echo "📁 Path: /home/g2141720189/sipreti/lancar/pemkot"
+          echo "⏰ Time: $(date)"
+          echo ""
+          echo "🔧 MANUAL DEPLOY COMMAND:"
+          echo "   ssh g2141720189@34.142.128.41"
+          echo "   cd /home/g2141720189/sipreti/lancar/pemkot"
+          echo "   ./deploy.sh"
+          echo ""
+          echo "📋 OR Step by step:"
+          echo "   1. git pull origin main"
+          echo "   2. source .venv/bin/activate"  
+          echo "   3. pip install -r requirements.txt"
+          echo "   4. python manage.py migrate"
+          echo "   5. python manage.py collectstatic --noinput"
+          echo ""
+          echo "✅ Ready for deployment!"
+          
+      - name: 📝 Recent Changes
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📋 LATEST COMMITS:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          git log --oneline -5 --decorate --color=always
