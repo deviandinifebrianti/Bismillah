@@ -1,4 +1,4 @@
-name: Deploy Django App (PEMKOTMALANG-SIPRETI) to Ubuntu 22.04
+name: Deploy Django App (PEMKOTMALANG-SIPRETI) to Debian 11
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04  # ✅ Ganti OS runner
+    runs-on: ubuntu-22.04  # GH Actions tidak menyediakan runner "debian-11" secara default
 
     services:
       mariadb:
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.7.8 on Ubuntu 22.04
+      - name: Set up Python 3.7.8 manually
         uses: actions/setup-python@v5
         with:
           python-version: '3.7.8'
@@ -37,9 +37,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ubuntu22-pip-${{ hashFiles('**/requirements.txt') }}
+          key: debian11-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ubuntu22-pip-
+            debian11-pip-
 
       - name: Install Python dependencies
         run: |
@@ -65,13 +65,13 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-22.04  # ✅ Ganti OS runner
+    runs-on: ubuntu-22.04  # Tetap pakai runner ini karena deploy-nya via SSH
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Ubuntu Server via SSH
+      - name: Deploy to Debian 11 Server via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOST }}
@@ -82,7 +82,7 @@ jobs:
             cd /home/${{ secrets.USERNAME }}/sipreti
 
             echo "OS Version:"
-            lsb_release -a
+            lsb_release -a || cat /etc/os-release
 
             echo "Creating backup..."
             mkdir -p backups
@@ -106,7 +106,7 @@ jobs:
             echo "Restarting Apache..."
             sudo systemctl restart apache2
 
-            echo "✅ Deployment complete on Ubuntu 22.04"
+            echo "✅ Deployment complete on Debian 11"
 
   notify:
     needs: [test, deploy]
@@ -117,7 +117,7 @@ jobs:
       - name: Notify Deployment Status
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment successful to Ubuntu 22.04"
+            echo "✅ Deployment successful to Debian 11"
           else
             echo "❌ Deployment failed! Check logs"
           fi
