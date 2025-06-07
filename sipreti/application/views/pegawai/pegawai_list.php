@@ -424,7 +424,7 @@
               <?php if (!empty($pegawai->image)): ?>
                 <?php 
                   // Langsung ambil dari Django
-                  $django_photo = "http://192.168.1.14:8000/media/" . $pegawai->image;
+                  $django_photo = "http://35.247.167.202:8080/media/" . $pegawai->image;
                 ?>
                 <img src="<?php echo $django_photo; ?>?t=<?php echo time(); ?>" 
                     class="profile-photo" 
